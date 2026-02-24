@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Smash Countdown</title>
+<style>
+body {
+  margin:0;
+  background:transparent;
+  font-family: 'Orbitron', sans-serif;
+  color:#ffffff;
+  text-align:center;
+}
+
+#countdown {
+  display:inline-block;
+  padding:10px 18px;
+  border-radius:8px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);
+  font-size:18px;
+  letter-spacing:1px;
+  min-width:220px;
+}
+</style>
+</head>
+<body>
+
+<div id="countdown">Loading...</div>
+
+<script>
+/*
+  REPLACE THIS WITH YOUR START.GG TOURNAMENT SLUG
+  Example:
+  https://www.start.gg/tournament/kava-works-smash-bros-ultimate-tournament
+  Slug = kava-works-smash-bros-ultimate-tournament
+*/
+var tournamentSlug = "kava-works-smash-bros-ultimate-tournament";
+
+/*
+  YOU MUST GET A FREE START.GG API KEY:
+  https://developer.start.gg/
+*/
+var apiKey = "d77a8b2bed70cd1f0605a7c7cc02b5c0";
+
+var query = `
+query TournamentEvents($slug: String!) {
+  tournament(slug: $slug) {
+    events {
+      id
+      name
+      startAt
+    }
+  }
+}
+`;
+
+fetch("https://api.start.gg/gql/alpha", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + apiKey
+  },
+  body: JSON.stringify({
+    query: query,
+    variables: { slug: tournamentSlug }
+  })
+})
+.then(res => res.json())
+.then(data => {
+
+  if (!data.data || !data.data.tournament) {
+    document.getElementById("countdown").innerHTML = "Event Not Found";
+    return;
+  }
+
+  var events = data.data.tournament.events;
+
+  var now = Date.now() / 1000;
+
+  var upcoming = events
+    .filter(e => e.startAt && e.startAt > now)
+    .sort((a,b) => a.startAt - b.startAt)[0];
+
+  if (!upcoming) {
+    document.getElementById("countdown").innerHTML = "No Upcoming Events";
+    return;
+  }
+
+  var eventTime = upcoming.startAt * 1000;
+
+  function update() {
+    var distance = eventTime - Date.now();
+
+    if (distance <= 0) {
+      document.getElementById("countdown").innerHTML = "Event Started!";
+      clearInterval(interval);
+      return;
+    }
+
+    var days = Math.floor(distance / (1000*60*60*24));
+    var hours = Math.floor((distance / (1000*60*60)) % 24);
+    var minutes = Math.floor((distance / (1000*60)) % 60);
+    var seconds = Math.floor((distance / 1000) % 60);
+
+    if (hours < 10) hours = "0" + hours;
+    if (minutes < 10) minutes = "0" + minutes;
+    if (seconds < 10) seconds = "0" + seconds;
+
+    document.getElementById("countdown").innerHTML =
+      days + "d " + hours + "h " + minutes + "m " + seconds + "s";
+  }
+
+  update();
+  var interval = setInterval(update, 1000);
+
+})
+.catch(() => {
+  document.getElementById("countdown").innerHTML = "API Error";
+});
+</script>
+
+</body>
+</html>
